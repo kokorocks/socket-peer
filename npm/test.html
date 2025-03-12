@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.IO Chat</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>WebSocket Chat</h1>
+
+    <div id="registerSection">
+        <input type="text" id="clientIdInput" placeholder="Enter your Client ID (optional)">
+        <button onclick="registerId()">Connect</button>
+    </div>
+
+    <div id="chatSection" style="display: none;">
+        <p>Your ID: <span id="clientId"></span></p>
+        <input type="text" id="targetId" placeholder="Enter target Client ID">
+        <input type="text" id="messageInput" placeholder="Type a message">
+        <button onclick="sendMessage()">Send</button>
+
+        <h2>Chat</h2>
+        <div id="chatBox" style="border: 1px solid black; padding: 10px; width: 300px; height: 200px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        const socket = io("https://upgraded-barnacle-7v4xprj74jwhxr55-5000.app.github.dev/"); // Change to your server address if needed
+        let clientId = localStorage.getItem("clientId") || "";
+
+        function registerId() {
+            let userInput = document.getElementById("clientIdInput").value.trim();
+            if (!userInput && clientId) {
+                userInput = clientId; // Use stored ID if available
+            }
+
+            socket.emit("register_id", { client_id: userInput });
+        }
+
+        socket.on("registration_success", (data) => {
+            clientId = data.client_id;
+            localStorage.setItem("clientId", clientId);  // Store ID for auto-login
+            document.getElementById("clientId").innerText = clientId;
+            document.getElementById("registerSection").style.display = "none";
+            document.getElementById("chatSection").style.display = "block";
+        });
+
+        function sendMessage() {
+            const targetId = document.getElementById("targetId").value;
+            const message = document.getElementById("messageInput").value;
+
+            if (!targetId || !message) {
+                alert("Enter target ID and message!");
+                return;
+            }
+
+            socket.emit("send_message", {
+                from: clientId,
+                target_id: targetId,
+                message: message
+            });
+
+            document.getElementById("chatBox").innerHTML += `<p><b>You:</b> ${message}</p>`;
+        }
+
+        socket.on("receive_message", (data) => {
+            document.getElementById("chatBox").innerHTML += `<p><b>${data.from}:</b> ${data.message}</p>`;
+        });
+
+        // Auto-register if ID was stored
+        if (clientId) {
+            socket.emit("register_id", { client_id: clientId });
+        }
+    </script>
+</body>
+</html>
